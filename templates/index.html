@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Facility Maintenance Request Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Feather / Lucide Icons via unpkg -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-mark">
+          <i class="bi bi-shield-check"></i>
+        </div>
+        <div class="logo-text">
+          <h2>Campus FMS</h2>
+          <span>Facility Maintenance</span>
+        </div>
+      </div>
+
+      <!-- User Card in Sidebar -->
+      <div class="user-profile-card">
+        <div class="avatar" id="userAvatar">AC</div>
+        <div class="user-details">
+          <h4 id="userName">Alex Chen</h4>
+          <span class="role-badge" id="userRoleBadge">Student/Staff</span>
+        </div>
+        <button class="switch-user-btn" id="btnOpenUserModal" title="Switch Demo Role">
+          <i class="bi bi-arrow-left-right"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Tabs (Dynamic per Role) -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">PORTAL NAVIGATION</div>
+        
+        <!-- Student/Staff Links -->
+        <button class="nav-item active" data-view="student" id="navStudent">
+          <i class="bi bi-ticket-detailed"></i>
+          <span>My Requests</span>
+          <span class="badge-count" id="countMyRequests">0</span>
+        </button>
+
+        <!-- Facility Admin Links -->
+        <button class="nav-item" data-view="admin" id="navAdmin">
+          <i class="bi bi-kanban"></i>
+          <span>Dispatch & Requests</span>
+          <span class="badge-count" id="countAdminRequests">0</span>
+        </button>
+
+        <!-- Technician Links -->
+        <button class="nav-item" data-view="technician" id="navTechnician">
+          <i class="bi bi-tools"></i>
+          <span>Assigned Jobs</span>
+          <span class="badge-count" id="countTechJobs">0</span>
+        </button>
+
+        <!-- Management Links -->
+        <button class="nav-item" data-view="management" id="navManagement">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Executive Dashboard</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer / Live Sync -->
+      <div class="sidebar-footer">
+        <div class="sync-status">
+          <span class="pulse-dot"></span>
+          <div>
+            <div class="sync-title">Live Updates Active</div>
+            <div class="sync-desc" id="syncEngineLabel">Polling every 5s • SQLite</div>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          <button class="sidebar-action-btn" id="btnQuickDemo">
+            <i class="bi bi-person-badge"></i> Demo Roles
+          </button>
+          <button class="sidebar-action-btn logout" id="btnLogout">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="pageTitle">My Maintenance Requests</h1>
+          <p id="pageSubtitle">Track facility issues, monitor service updates, and rate completed work</p>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="role-selector-pill">
+            <span class="label">Current View:</span>
+            <span class="value" id="currentViewLabel">Student / Staff</span>
+          </div>
+
+          <button class="btn btn-outline" id="btnManualRefresh" title="Refresh Now">
+            <i class="bi bi-arrow-repeat"></i> Sync
+          </button>
+
+          <!-- Submit Request CTA (Visible in Student & Admin views) -->
+          <button class="btn btn-primary" id="btnOpenNewRequestModal">
+            <i class="bi bi-plus-circle-fill"></i> New Request
+          </button>
+        </div>
+      </header>
+
+      <!-- NOTIFICATIONS TOAST -->
+      <div id="toastContainer" class="toast-container"></div>
+
+      <!-- VIEW CONTAINER -->
+      <div class="content-body">
+        
+        <!-- ============================================== -->
+        <!-- VIEW 1: STUDENT / STAFF VIEW                   -->
+        <!-- ============================================== -->
+        <section id="viewStudent" class="view-panel active">
+          <!-- Summary Counters -->
+          <div class="stat-cards-grid">
+            <div class="card stat-card">
+              <div class="stat-icon emerald"><i class="bi bi-list-task"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">My Total Requests</span>
+                <h3 class="stat-value" id="studentTotalCount">0</h3>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">In Progress / Assigned</span>
+                <h3 class="stat-value" id="studentOpenCount">0</h3>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Resolved Issues</span>
+                <h3 class="stat-value" id="studentResolvedCount">0</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Requests Table Card -->
+          <div class="card table-card">
+            <div class="table-header">
+              <div class="table-title">
+                <i class="bi bi-clipboard2-data"></i>
+                <h3>My Submitted Maintenance Requests</h3>
+              </div>
+              <div class="table-tools">
+                <button class="btn btn-sm btn-primary" id="btnStudentNewReq">
+                  <i class="bi bi-plus-lg"></i> Submit Issue
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="studentRequestsTable">
+                <thead>
+                  <tr>
+                    <th>Ticket #</th>
+                    <th>Category</th>
+                    <th>Location</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Date Submitted</th>
+                    <th>Assigned Tech</th>
+                    <th>Rating / Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentRequestsBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-4">Loading your requests...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- VIEW 2: FACILITY ADMIN VIEW                    -->
+        <!-- ============================================== -->
+        <section id="viewAdmin" class="view-panel">
+          <!-- Filter Toolbar Card -->
+          <div class="card filter-card">
+            <div class="filter-header">
+              <div class="filter-title">
+                <i class="bi bi-funnel-fill"></i>
+                <span>Filter & Dispatch Maintenance Requests</span>
+              </div>
+              <button class="btn btn-sm btn-ghost" id="btnClearFilters">
+                <i class="bi bi-x-circle"></i> Reset Filters
+              </button>
+            </div>
+            <div class="filter-controls">
+              <div class="filter-group">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" class="form-control form-control-sm">
+                  <option value="All">All Statuses</option>
+                  <option value="Open">Open</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="filterCategory">Category</label>
+                <select id="filterCategory" class="form-control form-control-sm">
+                  <option value="">All Categories</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="filterPriority">Priority</label>
+                <select id="filterPriority" class="form-control form-control-sm">
+                  <option value="All">All Priorities</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="filterBuilding">Building</label>
+                <select id="filterBuilding" class="form-control form-control-sm">
+                  <option value="">All Buildings</option>
+                </select>
+              </div>
+
+              <div class="filter-group search-group">
+                <label for="filterSearch">Search Query</label>
+                <div class="search-input-wrapper">
+                  <i class="bi bi-search"></i>
+                  <input type="text" id="filterSearch" class="form-control form-control-sm" placeholder="Ticket, room, requester...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- All Requests Table Card -->
+          <div class="card table-card">
+            <div class="table-header">
+              <div class="table-title">
+                <i class="bi bi-table"></i>
+                <h3>All Campus Maintenance Requests</h3>
+                <span class="badge badge-light" id="adminTotalBadge">0 tickets</span>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="adminRequestsTable">
+                <thead>
+                  <tr>
+                    <th>Ticket #</th>
+                    <th>Requester</th>
+                    <th>Category</th>
+                    <th>Building / Room</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned Tech</th>
+                    <th>SLA Target</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminRequestsBody">
+                  <tr>
+                    <td colspan="9" class="text-center py-4">Loading campus requests...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- VIEW 3: TECHNICIAN VIEW                        -->
+        <!-- ============================================== -->
+        <section id="viewTechnician" class="view-panel">
+          <!-- Tech Overview Counters -->
+          <div class="stat-cards-grid">
+            <div class="card stat-card">
+              <div class="stat-icon amber"><i class="bi bi-wrench-adjustable"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Assigned Jobs</span>
+                <h3 class="stat-value" id="techAssignedCount">0</h3>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon blue"><i class="bi bi-clock-history"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">In Progress</span>
+                <h3 class="stat-value" id="techInProgressCount">0</h3>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon green"><i class="bi bi-check2-circle"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Resolved by Me</span>
+                <h3 class="stat-value" id="techResolvedCount">0</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technician Jobs Table Card -->
+          <div class="card table-card">
+            <div class="table-header">
+              <div class="table-title">
+                <i class="bi bi-briefcase"></i>
+                <h3>My Active Maintenance Work Orders</h3>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="techJobsTable">
+                <thead>
+                  <tr>
+                    <th>Ticket #</th>
+                    <th>Category</th>
+                    <th>Location</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Issue Description</th>
+                    <th>Requester Contact</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="techJobsBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-4">Loading assigned jobs...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- VIEW 4: MANAGEMENT DASHBOARD VIEW              -->
+        <!-- ============================================== -->
+        <section id="viewManagement" class="view-panel">
+          <!-- Top KPI Metrics Cards -->
+          <div class="stat-cards-grid kpi-grid">
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon emerald"><i class="bi bi-folder2-open"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Total Requests</span>
+                <h3 class="stat-value" id="mgmtTotalReq">0</h3>
+                <span class="stat-hint">Campus-wide lifetime</span>
+              </div>
+            </div>
+
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon amber"><i class="bi bi-hourglass-top"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Open / In Progress</span>
+                <h3 class="stat-value" id="mgmtOpenReq">0</h3>
+                <span class="stat-hint">Requiring action</span>
+              </div>
+            </div>
+
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon green"><i class="bi bi-patch-check-fill"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Resolved Tickets</span>
+                <h3 class="stat-value" id="mgmtResolvedReq">0</h3>
+                <span class="stat-hint">Successfully closed</span>
+              </div>
+            </div>
+
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon blue"><i class="bi bi-stopwatch-fill"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">% Resolved in SLA</span>
+                <h3 class="stat-value" id="mgmtSlaPct">0%</h3>
+                <span class="stat-hint" id="slaBenchmark">Target: ≥ 90%</span>
+              </div>
+            </div>
+
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon gold"><i class="bi bi-star-fill"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Average User Rating</span>
+                <h3 class="stat-value" id="mgmtAvgRating">0.0 / 5</h3>
+                <span class="stat-hint" id="mgmtRatingCount">0 evaluations</span>
+              </div>
+            </div>
+
+            <div class="card stat-card kpi-card">
+              <div class="stat-icon slate"><i class="bi bi-cash-stack"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Materials Cost</span>
+                <h3 class="stat-value" id="mgmtTotalCost">₹0.00</h3>
+                <span class="stat-hint" id="mgmtTotalHours">0 hours logged</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts and Visualizations Grid -->
+          <div class="dashboard-visuals-grid">
+            <!-- Chart.js: Requests by Category -->
+            <div class="card chart-card">
+              <div class="card-header-flex">
+                <div class="card-title">
+                  <i class="bi bi-pie-chart-fill"></i>
+                  <h3>Requests by Facility Category</h3>
+                </div>
+                <span class="badge badge-primary">Chart.js Live</span>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="categoryChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart.js: Requests by Priority -->
+            <div class="card chart-card">
+              <div class="card-header-flex">
+                <div class="card-title">
+                  <i class="bi bi-bar-chart-fill"></i>
+                  <h3>Requests by Urgency / Priority</h3>
+                </div>
+                <span class="badge badge-light">Distribution</span>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="priorityChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status History Audit Timeline -->
+          <div class="card timeline-card">
+            <div class="card-header-flex">
+              <div class="card-title">
+                <i class="bi bi-clock-history"></i>
+                <h3>Status History Audit Timeline</h3>
+              </div>
+              <span class="badge badge-light">Captured via MySQL Database Trigger</span>
+            </div>
+
+            <div class="timeline-container" id="statusHistoryTimeline">
+              <!-- Timeline items injected here -->
+              <div class="text-center py-4 text-muted">Loading status transitions...</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: SUBMIT NEW REQUEST                      -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalNewRequest">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-plus-circle text-primary"></i>
+            <h3>Submit Maintenance Request</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="formNewRequest">
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="reqCategory">Facility Category <span class="required">*</span></label>
+                <select id="reqCategory" class="form-control" required>
+                  <option value="">Select Category...</option>
+                </select>
+                <small class="form-hint" id="catSlaHint">Select a category to see default SLA resolution window.</small>
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="reqPriority">Priority Level <span class="required">*</span></label>
+                <select id="reqPriority" class="form-control" required>
+                  <option value="Low">Low (General non-critical repair)</option>
+                  <option value="Medium" selected>Medium (Standard request)</option>
+                  <option value="High">High (Impairs academic/work flow)</option>
+                  <option value="Urgent">Urgent (Safety hazard / flood / outage)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="reqBuilding">Campus Building <span class="required">*</span></label>
+                <select id="reqBuilding" class="form-control" required>
+                  <option value="">Select Building...</option>
+                </select>
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="reqRoom">Room / Specific Location <span class="required">*</span></label>
+                <input type="text" id="reqRoom" class="form-control" placeholder="e.g. Room 304, West Lab, 2nd Fl Washroom" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="reqDescription">Issue Description <span class="required">*</span></label>
+              <textarea id="reqDescription" class="form-control" rows="3" placeholder="Please describe the maintenance problem in detail..." required></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitRequest">
+              <i class="bi bi-send-fill"></i> Submit Ticket
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: ASSIGN TECHNICIAN (MATCHING SKILL ONLY) -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalAssignTech">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-person-check text-primary"></i>
+            <h3>Assign Qualified Technician</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="formAssignTech">
+          <input type="hidden" id="assignRequestId">
+          <div class="modal-body">
+            <div class="ticket-summary-pill mb-3" id="assignTicketSummary">
+              <!-- Summary of request category and room -->
+            </div>
+
+            <div class="form-group">
+              <label for="assignTechSelect">
+                Qualified & Available Technicians <span class="required">*</span>
+              </label>
+              <select id="assignTechSelect" class="form-control" required>
+                <option value="">Loading qualified technicians...</option>
+              </select>
+              <small class="form-hint text-success">
+                <i class="bi bi-check-circle-fill"></i> 
+                Filtered by matching category skill and current availability only.
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnConfirmAssign">
+              <i class="bi bi-check2"></i> Dispatch Technician
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CHANGE STATUS                           -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalChangeStatus">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-arrow-repeat text-primary"></i>
+            <h3>Update Request Status</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="formChangeStatus">
+          <input type="hidden" id="statusRequestId">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="selectNewStatus">New Status</label>
+              <select id="selectNewStatus" class="form-control" required>
+                <option value="Open">Open</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+              </select>
+              <small class="form-hint">Status changes are recorded into StatusHistory by database trigger.</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary">Update Status</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: ADD WORK LOG + MATERIALS/COST           -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalWorkLog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-journal-plus text-primary"></i>
+            <h3>Log Work & Materials</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="formWorkLog">
+          <input type="hidden" id="workLogRequestId">
+          <div class="modal-body">
+            <div class="ticket-summary-pill mb-3" id="workLogTicketSummary"></div>
+
+            <div class="form-group">
+              <label for="workDescription">Work Description / Diagnostic Notes <span class="required">*</span></label>
+              <textarea id="workDescription" class="form-control" rows="3" placeholder="Explain what repairs were conducted, tested, or pending..." required></textarea>
+            </div>
+
+            <h4 style="font-size: 13px; font-weight:700; color:var(--primary-dark); margin: 16px 0 8px;">
+              <i class="bi bi-box-seam"></i> Materials & Parts Consumed (Optional)
+            </h4>
+            <div class="form-row">
+              <div class="form-group" style="flex: 2;">
+                <label for="workMatName">Material Name</label>
+                <input type="text" id="workMatName" class="form-control" placeholder="e.g. Replacement Breaker, PTFE Tape">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label for="workMatQty">Qty</label>
+                <input type="number" min="1" value="1" id="workMatQty" class="form-control">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label for="workMatCost">Cost (₹)</label>
+                <input type="number" step="0.01" min="0" value="0.00" id="workMatCost" class="form-control" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveWorkLog">
+              <i class="bi bi-save2"></i> Save Work Log
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: RATE RESOLVED REQUEST                   -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalRating">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-star-half text-primary"></i>
+            <h3>Rate Maintenance Service</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <form id="formRating">
+          <input type="hidden" id="ratingRequestId">
+          <div class="modal-body text-center">
+            <p class="text-muted mb-2">How satisfied are you with the facility repair?</p>
+            
+            <!-- Interactive 5 Stars -->
+            <div class="star-rating-picker" id="starRatingPicker">
+              <i class="bi bi-star star-btn" data-value="1"></i>
+              <i class="bi bi-star star-btn" data-value="2"></i>
+              <i class="bi bi-star star-btn" data-value="3"></i>
+              <i class="bi bi-star star-btn" data-value="4"></i>
+              <i class="bi bi-star star-btn" data-value="5"></i>
+            </div>
+            <input type="hidden" id="ratingScoreInput" value="5">
+            <div class="rating-label-display" id="ratingLabelDisplay">5 - Excellent Service</div>
+
+            <div class="form-group text-left mt-3">
+              <label for="ratingFeedback">Feedback Comments (Optional)</label>
+              <textarea id="ratingFeedback" class="form-control" rows="2" placeholder="Let us know what went well or how we can improve..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitRating">Submit Rating</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: REQUEST DETAILS & AUDIT TRAIL           -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalDetails">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-info-circle text-primary"></i>
+            <h3 id="detailsTicketTitle">Request Details: REQ-2026-001</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body" id="detailsModalBody">
+          <!-- Populated dynamically with full work logs, materials, timeline, etc. -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal>Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: DEMO USER SWITCHER                      -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modalUserSwitcher">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="bi bi-people-fill text-primary"></i>
+            <h3>Switch Demo User Role</h3>
+          </div>
+          <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-3">Select any of the seed users below to switch views instantly and test role-based capabilities:</p>
+          <div class="user-switch-list" id="demoUserList">
+            <!-- Populated via /api/auth/demo-users -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Script -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

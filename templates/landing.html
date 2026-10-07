@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Campus Facility Maintenance System | Role Gateway</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="auth-page-body" style="display:block; padding: 40px 16px;">
+  <div class="landing-wrapper">
+    <div class="landing-hero">
+      <div class="auth-logo-badge" style="width:68px; height:68px; font-size:32px; margin-bottom:16px;">🏫</div>
+      <h1 class="landing-title">Campus Facility Maintenance Request System</h1>
+      <p class="landing-desc">
+        Select your role-specific console to access maintenance requests, assignments, dispatches, and executive facility analytics.
+      </p>
+    </div>
+
+    {% if current_user %}
+    <div class="active-session-banner">
+      <div>
+        <strong style="color:var(--primary-dark); font-size:15px;">Active Session:</strong>
+        <span style="font-weight:600; margin-left:6px;">{{ current_user.Name }}</span>
+        <span class="role-badge-pill role-{{ current_user.Role }}" style="margin-left:8px;">{{ current_user.Role }}</span>
+      </div>
+      <div style="display:flex; gap:10px;">
+        {% if current_user.Role == 'student_staff' %}
+          <a href="/portal" class="btn btn-primary btn-sm">Enter Requester Portal ➔</a>
+        {% elif current_user.Role == 'technician' %}
+          <a href="/technician" class="btn btn-primary btn-sm">Enter Technician Console ➔</a>
+        {% elif current_user.Role == 'facility_admin' %}
+          <a href="/admin" class="btn btn-primary btn-sm">Enter Admin Console ➔</a>
+        {% elif current_user.Role == 'management' %}
+          <a href="/management" class="btn btn-primary btn-sm">Enter Management Console ➔</a>
+        {% endif %}
+        <button class="btn btn-secondary btn-sm" onclick="handleLogout()">Log Out</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="portal-grid">
+      <!-- 1. Student / Staff Portal -->
+      <div class="portal-card">
+        <div>
+          <div class="portal-card-icon portal-icon-student">🎓</div>
+          <h2 class="portal-card-title">Student & Staff Portal</h2>
+          <p class="portal-card-desc">
+            Submit facility breakdown tickets, track status in real-time, view SLA targets, and rate resolved requests.
+          </p>
+        </div>
+        <div>
+          <a href="/portal" class="btn-portal">Open Requester Portal ➔</a>
+          <div style="text-align:center; margin-top:8px; font-size:12px;">
+            <a href="/portal/register" style="color:var(--text-secondary); text-decoration:none;">New here? <strong>Register Account</strong></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Technician Console -->
+      <div class="portal-card">
+        <div>
+          <div class="portal-card-icon portal-icon-tech">🔧</div>
+          <h2 class="portal-card-title">Technician Console</h2>
+          <p class="portal-card-desc">
+            View assigned work orders, log labor details, record material expenditures in ₹ (INR), and mark jobs resolved.
+          </p>
+        </div>
+        <div>
+          <a href="/technician" class="btn-portal" style="background:#0284c7;">Open Technician Console ➔</a>
+        </div>
+      </div>
+
+      <!-- 3. Facility Admin Console -->
+      <div class="portal-card">
+        <div>
+          <div class="portal-card-icon portal-icon-admin">⚙️</div>
+          <h2 class="portal-card-title">Facility Admin Console</h2>
+          <p class="portal-card-desc">
+            Comprehensive campus ticket management, skill-matched technician dispatch, user provisioning, and audit logs.
+          </p>
+        </div>
+        <div>
+          <a href="/admin" class="btn-portal" style="background:#d97706;">Open Admin Console ➔</a>
+        </div>
+      </div>
+
+      <!-- 4. Management Console -->
+      <div class="portal-card">
+        <div>
+          <div class="portal-card-icon portal-icon-mgmt">📊</div>
+          <h2 class="portal-card-title">Executive Management</h2>
+          <p class="portal-card-desc">
+            Executive read-only analytics, SLA compliance metrics, cost expenditures in ₹, volume trends, and system audit trail.
+          </p>
+        </div>
+        <div>
+          <a href="/management" class="btn-portal" style="background:#7e22ce;">Open Management Console ➔</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:12.5px; color:var(--text-muted); margin-top:36px;">
+      Campus Facility Management System • Localhost MySQL Engine • All costs displayed in ₹ (INR)
+    </div>
+  </div>
+
+  <script src="/static/js/common.js"></script>
+</body>
+</html>

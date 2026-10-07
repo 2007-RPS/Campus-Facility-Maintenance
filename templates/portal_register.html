@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Student & Staff Registration | Campus FMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="auth-page-body portal-theme">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo-badge">🎓</div>
+        <h1 class="auth-title">Requester Registration</h1>
+        <p class="auth-subtitle">Create a Student or Staff maintenance account</p>
+        <span class="auth-role-tag">Public Registration (Student / Staff)</span>
+      </div>
+
+      <div id="auth-alert" class="auth-alert"></div>
+
+      <form id="register-form" class="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="name">Full Name</label>
+          <input type="text" id="name" class="form-input" placeholder="e.g. Priya Sharma" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Campus Email</label>
+          <input type="email" id="email" class="form-input" placeholder="priya.sharma@campus.edu" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone Number</label>
+          <input type="tel" id="phone" class="form-input" placeholder="+91 98765 43210">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dept">Department / Faculty</label>
+          <input type="text" id="dept" class="form-input" placeholder="e.g. Computer Science, Hostels" value="General">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password (min 6 chars)</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm-password">Confirm Password</label>
+          <input type="password" id="confirm-password" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="padding:12px; font-size:14.5px;">Register Account</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/portal/login">Sign In</a></p>
+        <p style="margin-top:12px;"><a href="/" style="color:var(--text-muted); font-size:12.5px;">← Return to Console Gateway</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/auth.js"></script>
+</body>
+</html>

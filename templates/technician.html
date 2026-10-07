@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Technician Console | Campus Facility Maintenance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="tech-theme">
+  <div class="app-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo" style="background:#0284c7;">🔧</div>
+        <div>
+          <div class="sidebar-title">Campus FMS</div>
+          <div class="sidebar-badge" style="background:#e0f2fe; color:#0369a1;">Technician Console</div>
+        </div>
+      </div>
+
+      <!-- Technician Profile Card -->
+      <div style="padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="font-weight:700; font-size:14px; color:#ffffff;">{{ current_user.Name }}</div>
+        <div style="font-size:12px; color:var(--sidebar-muted);">{{ current_user.Email }}</div>
+        <div style="display:inline-block; margin-top:8px; padding:3px 10px; background:rgba(255,255,255,0.15); border-radius:999px; font-size:11.5px; font-weight:600; color:#ffffff;">
+          Department: {{ current_user.Dept or 'Maintenance' }}
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#assigned-jobs" class="nav-item active">
+          <span>🔨</span> Assigned Work Orders
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn btn-secondary btn-block" onclick="handleLogout()" style="background:rgba(255,255,255,0.1); color:#ffffff; border:none; padding:10px;">
+          🚪 Log Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-bar">
+        <div>
+          <h1 style="font-size:20px; font-weight:700; color:var(--text-primary);">Assigned Maintenance Jobs</h1>
+          <p class="text-muted" style="font-size:13px;">Manage active repair tasks, record work logs with materials in ₹, and resolve issues</p>
+        </div>
+        <div id="job-count-badge" class="badge badge-submitted" style="font-size:13px; padding:6px 14px;">
+          Loading jobs...
+        </div>
+      </header>
+
+      <div class="content-body">
+        <!-- Filter Pills -->
+        <div class="filter-pills-group" style="display:flex; gap:8px; margin-bottom:20px;">
+          <button class="btn btn-secondary tech-filter-pill active" data-status="all">All Jobs</button>
+          <button class="btn btn-secondary tech-filter-pill" data-status="Assigned">Assigned</button>
+          <button class="btn btn-secondary tech-filter-pill" data-status="In Progress">In Progress</button>
+          <button class="btn btn-secondary tech-filter-pill" data-status="Resolved">Resolved</button>
+          <button class="btn btn-secondary tech-filter-pill" data-status="Closed">Closed</button>
+        </div>
+
+        <!-- Jobs Table -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Requester & Phone</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tech-jobs-tbody">
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">Loading assigned jobs...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Work Log & Materials Modal -->
+  <div id="work-log-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:620px;">
+      <div class="modal-header">
+        <h3 style="font-size:18px; font-weight:700;">Record Work Log & Materials (₹)</h3>
+        <button class="modal-close-btn" onclick="closeModal('work-log-modal')">✕</button>
+      </div>
+      <form id="work-log-form">
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+          <div class="form-group">
+            <label class="form-label" for="work-desc-input">Work Description & Actions Taken *</label>
+            <textarea id="work-desc-input" class="form-textarea" rows="3" placeholder="Describe the diagnostics performed, repairs completed, or parts replaced..." required></textarea>
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;">Materials & Spare Parts Used (₹)</label>
+              <button type="button" id="add-material-row-btn" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:12px;">+ Add Item</button>
+            </div>
+
+            <div id="materials-inputs-container">
+              <!-- Material Input Rows inserted dynamically -->
+            </div>
+            <div class="text-muted" style="font-size:12px;">All material expenses must be entered in Indian Rupees (₹).</div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('work-log-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Work Log & Advance to In Progress</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Job Details Modal -->
+  <div id="tech-details-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 style="font-size:18px; font-weight:700;">Job Details</h3>
+        <button class="modal-close-btn" onclick="closeModal('tech-details-modal')">✕</button>
+      </div>
+      <div id="tech-details-content" class="modal-body">
+        Loading...
+      </div>
+      <div class="modal-footer" style="text-align:right;">
+        <button class="btn btn-secondary" onclick="closeModal('tech-details-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/technician.js"></script>
+</body>
+</html>

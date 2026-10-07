@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>403 Access Denied | Campus FMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="auth-page-body">
+  <div class="auth-container">
+    <div class="auth-card" style="text-align:center;">
+      <div class="error-code">403</div>
+      <h1 class="auth-title">Access Denied (Forbidden)</h1>
+      <p class="auth-subtitle" style="margin-top:8px;">
+        {{ error_message or "You do not have permission to access this resource or console. Server-side role-based and object-level authorization has rejected this request." }}
+      </p>
+
+      {% if user_role %}
+      <div style="margin:20px 0; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px; font-size:13px;">
+        Your authenticated role is <strong>{{ user_role }}</strong>.<br>
+        {% if allowed_roles %}
+        Required role(s): <strong>{{ allowed_roles | join(', ') }}</strong>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:24px;">
+        <a href="/" class="btn btn-primary" style="padding:10px;">Return to Gateway</a>
+        <button class="btn btn-secondary" onclick="handleLogout()" style="padding:10px;">Sign Out & Switch Account</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/common.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Executive Management Sign In | Campus FMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="auth-page-body mgmt-theme">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo-badge" style="background:linear-gradient(135deg, #7e22ce 0%, #581c87 100%);">📊</div>
+        <h1 class="auth-title">Executive Management</h1>
+        <p class="auth-subtitle">Read-only institutional analytics, SLA targets & expense monitoring</p>
+        <span class="auth-role-tag" style="background:#f3e8ff; color:#7e22ce;">Management (Read-Only)</span>
+      </div>
+
+      <div id="auth-alert" class="auth-alert"></div>
+
+      <form id="login-form" class="auth-form" data-role="management">
+        <div class="form-group">
+          <label class="form-label" for="email">Management Email</label>
+          <input type="email" id="email" class="form-input" placeholder="reynolds.mgmt@campus.edu" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="background:#7e22ce; padding:12px; font-size:14.5px;">Sign In to Executive Dashboard</button>
+      </form>
+
+      <div class="auth-footer">
+        <p style="font-size:12.5px; color:var(--text-muted);">Strictly Read-Only Role • Object & Action Mutations Prohibited</p>
+        <p style="margin-top:12px;"><a href="/" style="color:var(--text-muted); font-size:12.5px;">← Return to Console Gateway</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/auth.js"></script>
+</body>
+</html>
