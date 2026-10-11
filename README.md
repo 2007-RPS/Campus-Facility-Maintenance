@@ -55,37 +55,64 @@ Managing facility maintenance across sprawling university campuses often suffers
 
 ```mermaid
 flowchart TD
-    subgraph ClientConsoles ["Client Tier (Isolated Consoles)"]
-        A["🧑‍🎓 Student / Staff Portal<br><code>/portal</code>"]
-        B["🔧 Technician Console<br><code>/technician</code>"]
-        C["🏢 Facility Admin Console<br><code>/admin</code>"]
-        D["📈 Executive Management<br><code>/management (Read-Only)</code>"]
+    subgraph ClientConsoles ["1. Client Tier (Isolated Role Consoles)"]
+        direction LR
+        A["🧑‍🎓 <b>Student & Staff</b><br/>/portal"]
+        B["🔧 <b>Technician</b><br/>/technician"]
+        C["🏢 <b>Facility Admin</b><br/>/admin"]
+        D["📈 <b>Management</b><br/>/management (Read-Only)"]
     end
 
-    subgraph SecurityLayer ["Security & Middleware Tier"]
-        SEC1["🛡️ CSRF Token Validator<br><code>X-CSRF-Token</code>"]
-        SEC2["🔐 Server-Side RBAC<br><code>@role_required</code>"]
-        SEC3["🛑 Brute-Force Protection<br><code>LoginAttempts (15m Lock)</code>"]
-        SEC4["⏱️ Inactive Session Timeout<br><code>30 Minutes</code>"]
+    subgraph SecurityLayer ["2. Security & Middleware Tier"]
+        direction LR
+        SEC1["🛡️ <b>CSRF Shield</b><br/>X-CSRF-Token"]
+        SEC2["🔐 <b>Server RBAC</b><br/>@role_required"]
+        SEC3["🛑 <b>Lockout Defense</b><br/>15m Rate Limit"]
+        SEC4["⏱️ <b>Idle Expiry</b><br/>30m Timeout"]
     end
 
-    subgraph BackendAPI ["Application Layer (Python Flask 3.0)"]
-        API1["Portal API Controller<br><code>/api/portal/*</code>"]
-        API2["Technician API Controller<br><code>/api/technician/*</code>"]
-        API3["Admin Dispatch Controller<br><code>/api/admin/*</code>"]
-        API4["Management BI Controller<br><code>/api/management/*</code>"]
+    subgraph BackendAPI ["3. Application Layer (Python Flask 3.0)"]
+        direction LR
+        API1["<b>Portal API</b><br/>/api/portal/*"]
+        API2["<b>Technician API</b><br/>/api/technician/*"]
+        API3["<b>Admin Dispatch API</b><br/>/api/admin/*"]
+        API4["<b>Management BI API</b><br/>/api/management/*"]
     end
 
-    subgraph DatabaseTier ["Persistence Tier (MySQL 8.0 - campus_fms)"]
-        DB["15-Table Normalized Schema (3NF)"]
-        TRG1["Trigger: <code>trg_requests_insert_history</code>"]
-        TRG2["Trigger: <code>trg_requests_update_history</code>"]
-        AUD["Immutable <code>AuditLog</code> & <code>StatusHistory</code>"]
+    subgraph DatabaseTier ["4. Persistence & Audit Tier (MySQL 8.0)"]
+        direction LR
+        DB["<b>15-Table 3NF Schema</b><br/>Relational Model"]
+        TRG["<b>MySQL Triggers</b><br/>Auto Status Audit"]
+        AUD["<b>Audit Logging</b><br/>Immutable AuditLog"]
     end
 
-    ClientConsoles --> SecurityLayer
-    SecurityLayer --> BackendAPI
-    BackendAPI --> DatabaseTier
+    ClientConsoles ==> SecurityLayer
+    SecurityLayer ==> BackendAPI
+    BackendAPI ==> DatabaseTier
+
+    style ClientConsoles fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#ffffff
+    style SecurityLayer fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#ffffff
+    style BackendAPI fill:#14532d,stroke:#4ade80,stroke-width:2px,color:#ffffff
+    style DatabaseTier fill:#3b0764,stroke:#c084fc,stroke-width:2px,color:#ffffff
+
+    style A fill:#1e293b,stroke:#38bdf8,color:#ffffff
+    style B fill:#1e293b,stroke:#38bdf8,color:#ffffff
+    style C fill:#1e293b,stroke:#38bdf8,color:#ffffff
+    style D fill:#1e293b,stroke:#38bdf8,color:#ffffff
+
+    style SEC1 fill:#312e81,stroke:#818cf8,color:#ffffff
+    style SEC2 fill:#312e81,stroke:#818cf8,color:#ffffff
+    style SEC3 fill:#312e81,stroke:#818cf8,color:#ffffff
+    style SEC4 fill:#312e81,stroke:#818cf8,color:#ffffff
+
+    style API1 fill:#166534,stroke:#4ade80,color:#ffffff
+    style API2 fill:#166534,stroke:#4ade80,color:#ffffff
+    style API3 fill:#166534,stroke:#4ade80,color:#ffffff
+    style API4 fill:#166534,stroke:#4ade80,color:#ffffff
+
+    style DB fill:#581c87,stroke:#c084fc,color:#ffffff
+    style TRG fill:#581c87,stroke:#c084fc,color:#ffffff
+    style AUD fill:#581c87,stroke:#c084fc,color:#ffffff
 ```
 
 ---
@@ -95,18 +122,58 @@ flowchart TD
 Campus FMS enforces a strict, **forward-only** ticket lifecycle. Skipped phases or retrogressive transitions are rejected at both the application API layer and by native database triggers.
 
 ```mermaid
-flowchart LR
-    A(["🟢 Open<br>Ticket Created by Requester"]) -->|Admin Dispatches Tech| B(["🔵 Assigned<br>Tech Allocated via Skills"])
-    B -->|Tech Starts Work / Logs| C(["🟡 In Progress<br>Parts & Time Logged"])
-    C -->|Tech Marks Resolved| D(["🟣 Resolved<br>Pending User Inspection"])
-    D -->|User Submits Rating| E(["⚪ Closed<br>Archived with Feedback"])
+flowchart TD
+    A["🟢 <b>STAGE 1: OPEN</b><br/>Ticket created by requester via Student/Staff Portal"]
+    B["🔵 <b>STAGE 2: ASSIGNED</b><br/>Skill-matched technician dispatched by Facility Admin"]
+    C["🟡 <b>STAGE 3: IN PROGRESS</b><br/>Technician logs labor description and material expenses (₹)"]
+    D["🟣 <b>STAGE 4: RESOLVED</b><br/>Work completed by technician; pending requester inspection"]
+    E["⚪ <b>STAGE 5: CLOSED</b><br/>Requester reviews resolution and submits 1–5★ rating"]
 
-    style A fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
-    style B fill:#dbeafe,stroke:#2563eb,stroke-width:2px;
-    style C fill:#fef9c3,stroke:#ca8a04,stroke-width:2px;
-    style D fill:#f3e8ff,stroke:#9333ea,stroke-width:2px;
-    style E fill:#f1f5f9,stroke:#64748b,stroke-width:2px;
+    A -->|"Admin assigns technician"| B
+    B -->|"Technician records initial work log"| C
+    C -->|"Technician marks job completed"| D
+    D -->|"Requester submits feedback & rating"| E
+
+    style A fill:#064e3b,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    style B fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    style C fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff
+    style D fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#ffffff
+    style E fill:#1e293b,stroke:#94a3b8,stroke-width:2px,color:#ffffff
 ```
+
+### 📋 Visual State Progression
+
+```
+┌─────────────────┐       Admin Dispatches Tech       ┌──────────────────────┐
+│  🟢 1. OPEN     │ ────────────────────────────────> │  🔵 2. ASSIGNED      │
+│  Ticket Filed   │                                   │  Skill-Matched Tech  │
+└─────────────────┘                                   └──────────────────────┘
+                                                                 │
+                                                       Tech Adds Work Log
+                                                                 ▼
+┌─────────────────┐       Tech Marks Done             ┌──────────────────────┐
+│  🟣 4. RESOLVED │ <──────────────────────────────── │  🟡 3. IN PROGRESS   │
+│  Pending Review │                                   │  Labor & Parts (₹)   │
+└─────────────────┘                                   └──────────────────────┘
+         │
+User Rates Service (1–5★)
+         ▼
+┌─────────────────┐
+│  ⚪ 5. CLOSED   │
+│  Archived Order │
+└─────────────────┘
+```
+
+### 📊 Lifecycle State & Transition Matrix
+
+| Step | Status | Permitted Actor | Triggering Action | State Description & Allowed Operations | DB Trigger Validation |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **01** | `Open` | Student / Staff | Request submission (`/portal`) | Initial ticket created; awaiting dispatch review. | `trg_requests_insert_history` auto-records initial state in `StatusHistory`. |
+| **02** | `Assigned` | Facility Admin | Technician dispatch (`/admin`) | Ticket assigned to an available technician matching required skill. | Validates technician active status; advances status to `Assigned`. |
+| **03** | `In Progress` | Technician | First work log entry (`/technician`) | Technician arrives on site; itemizes labor and spare parts in **₹**. | Auto-advances from `Assigned` when first work log is submitted. |
+| **04** | `Resolved` | Technician | Job resolution (`/technician`) | Repair verified by technician; stops SLA clock; notifies requester. | Trigger validates forward step (`In Progress` ➔ `Resolved`). |
+| **05** | `Closed` | Student / Staff | Feedback & rating (`/portal`) | Requester confirms fix, provides 1–5★ rating; ticket permanently archived. | Terminal state; trigger rejects any further status mutation. |
+
 
 ---
 
