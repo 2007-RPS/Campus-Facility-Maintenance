@@ -275,6 +275,10 @@ def role_required(*allowed_roles):
 # Public Web Routes & Role Login Views
 # =====================================================================
 
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
 @app.route("/")
 def index():
     """Landing gateway directing users to their respective consoles."""
@@ -671,12 +675,7 @@ def api_portal_create_request():
         commit=True
     )
 
-    # Record initial status in StatusHistory
-    query_db(
-        "INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, NULL, 'Open', %s)",
-        (req_id, now_str), commit=True
-    )
-
+    # Initial status in StatusHistory is populated automatically by MySQL trigger trg_requests_insert_history
     log_audit("REQUEST_CREATED", f"Maintenance request #{req_id} created by user #{user_id}", user_id=user_id)
 
 
@@ -730,10 +729,9 @@ def api_portal_submit_feedback(req_id):
             (req_id, user_id, rating_val, comments, now_str), commit=True
         )
 
-    # Advance status to 'Closed' if currently 'Resolved'
+    # Advance status to 'Closed' if currently 'Resolved' (trigger trg_requests_update_history logs to StatusHistory)
     if req_item["Status"] == "Resolved":
         query_db("UPDATE Requests SET Status = 'Closed' WHERE RequestID = %s", (req_id,), commit=True)
-        query_db("INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, 'Resolved', 'Closed', %s)", (req_id, now_str), commit=True)
         log_audit("STATUS_CHANGED", f"Request #{req_id} transitioned to Closed upon feedback submission", user_id=user_id)
 
     log_audit("FEEDBACK_SUBMITTED", f"Feedback for request #{req_id}: rating {rating_val}/5", user_id=user_id)
@@ -892,8 +890,14 @@ def api_technician_add_work_log(req_id):
 
     for mat in materials:
         m_name = (mat.get("material_name") or mat.get("MaterialName") or "").strip()
-        m_qty = int(mat.get("qty") or mat.get("Qty") or 1)
-        m_cost = float(mat.get("cost") or mat.get("Cost") or 0.0)
+        try:
+            m_qty = max(1, int(mat.get("qty") or mat.get("Qty") or 1))
+        except (ValueError, TypeError):
+            m_qty = 1
+        try:
+            m_cost = max(0.0, float(mat.get("cost") or mat.get("Cost") or 0.0))
+        except (ValueError, TypeError):
+            m_cost = 0.0
         if m_name:
             query_db(
                 "INSERT INTO Materials (LogID, MaterialName, Qty, Cost) VALUES (%s, %s, %s, %s)",
@@ -901,10 +905,9 @@ def api_technician_add_work_log(req_id):
                 commit=True
             )
 
-    # Auto-advance Assigned -> In Progress
+    # Auto-advance Assigned -> In Progress (trigger trg_requests_update_history logs to StatusHistory)
     if req_item["Status"] == "Assigned":
         query_db("UPDATE Requests SET Status = 'In Progress' WHERE RequestID = %s", (req_id,), commit=True)
-        query_db("INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, 'Assigned', 'In Progress', %s)", (req_id, now_str), commit=True)
         log_audit("STATUS_CHANGED", f"Request #{req_id} transitioned to In Progress via WorkLog")
 
     log_audit("WORK_LOG_ADDED", f"Tech #{tech['TechID']} added work log #{log_id} to Request #{req_id}")
@@ -940,7 +943,6 @@ def api_technician_resolve_job(req_id):
 
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     query_db("UPDATE Requests SET Status = 'Resolved' WHERE RequestID = %s", (req_id,), commit=True)
-    query_db("INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, 'In Progress', 'Resolved', %s)", (req_id, now_str), commit=True)
     log_audit("STATUS_CHANGED", f"Tech #{tech['TechID']} marked Request #{req_id} as Resolved")
 
     return jsonify({"message": "Maintenance request marked as Resolved", "status": "Resolved"})
@@ -1124,10 +1126,6 @@ def api_admin_assign_technician(req_id):
 
             if req_item["Status"] == "Open":
                 cur.execute("UPDATE Requests SET Status = 'Assigned' WHERE RequestID = %s", (req_id,))
-                cur.execute(
-                    "INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, 'Open', 'Assigned', %s)",
-                    (req_id, now_str)
-                )
 
         conn.commit()
     except Exception as e:
@@ -1173,9 +1171,7 @@ def api_admin_update_status(req_id):
         }), 400
 
     try:
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         query_db("UPDATE Requests SET Status = %s WHERE RequestID = %s", (new_status, req_id), commit=True)
-        query_db("INSERT INTO StatusHistory (RequestID, OldStatus, NewStatus, ChangedOn) VALUES (%s, %s, %s, %s)", (req_id, current_status, new_status, now_str), commit=True)
     except Exception as e:
         return jsonify({"error": f"Database validation error: {str(e)}"}), 400
 
