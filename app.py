@@ -15,6 +15,24 @@ load_dotenv()
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "campus_fms_super_secret_key_2026_development")
 
+class VercelPathFixMiddleware:
+    """Restores the true requested path when Vercel rewrites forward to an entrypoint."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        original_uri = environ.get("HTTP_X_FORWARDED_URI") or environ.get("HTTP_X_MATCHED_PATH")
+        path_info = environ.get("PATH_INFO", "")
+        if original_uri:
+            path_only = original_uri.split("?")[0]
+            if path_only and path_only not in ("/api/index", "/api/index.py"):
+                environ["PATH_INFO"] = path_only
+        elif path_info in ("/api/index", "/api/index.py", "/app.py"):
+            environ["PATH_INFO"] = "/"
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelPathFixMiddleware(app.wsgi_app)
+
 # Session & Cookie Security
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -280,6 +298,8 @@ def favicon():
     return "", 204
 
 @app.route("/")
+@app.route("/api/index")
+@app.route("/api/index.py")
 def index():
     """Landing gateway directing users to their respective consoles."""
     user = get_current_user_obj()
@@ -1451,9 +1471,10 @@ def forbidden_error(e):
 
 @app.errorhandler(404)
 def not_found_error(e):
-    if request.path.startswith("/api/"):
+    if request.path.startswith("/api/") and not request.path.startswith(("/api/index", "/api/index.py")):
         return jsonify({"error": "Endpoint not found"}), 404
-    return render_template("landing.html"), 404
+    user = get_current_user_obj()
+    return render_template("landing.html", user=user), 404
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
