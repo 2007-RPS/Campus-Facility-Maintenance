@@ -140,7 +140,11 @@ def initialize_database():
             print("[*] Applying seed.sql...")
             with open(SEED_SQL_PATH, "r", encoding="utf-8") as f:
                 seed_content = f.read()
-            execute_mysql_script(cur, seed_content)
+            filtered_seed = [
+                line for line in seed_content.splitlines()
+                if not re.match(r"^\s*USE\s+", line, re.IGNORECASE)
+            ]
+            execute_mysql_script(cur, "\n".join(filtered_seed))
             conn.commit()
             print("[OK] Seed data inserted successfully.")
 
