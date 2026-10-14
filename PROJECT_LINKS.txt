@@ -1,0 +1,64 @@
+================================================================================
+CAMPUS FACILITY MAINTENANCE REQUEST MANAGEMENT SYSTEM (CAMPUS FMS)
+DBMS PROJECT SUBMISSION & DEPLOYMENT DETAILS
+================================================================================
+
+Student Name   : Rudra Pratap Singh
+Roll Number    : 25WU0104020
+Course         : Database Management Systems (DBMS)
+Academic Year  : 2025-2026
+
+--------------------------------------------------------------------------------
+1. PROJECT LINKS
+--------------------------------------------------------------------------------
+* Live Vercel Application URL : https://campus-facility-maintenance.vercel.app
+* GitHub Repository URL       : https://github.com/2007-RPS/Campus-Facility-Maintenance
+
+--------------------------------------------------------------------------------
+2. DATABASE ARCHITECTURE (RAILWAY CLOUD MYSQL)
+--------------------------------------------------------------------------------
+* Database Platform : Railway Cloud Infrastructure
+* Engine            : MySQL 8.4 Server
+* Host (TCP Proxy)  : roundhouse.proxy.rlwy.net
+* Port              : 17985
+* Database Name     : railway
+* Description       :
+  The database is hosted on Railway's cloud infrastructure, running a fully
+  normalized 15-table 3NF relational schema. It features foreign key constraints
+  with cascade rules, least-privilege access, and automated MySQL triggers
+  (trg_requests_insert_history and trg_requests_update_history) to enforce a
+  strict, forward-only ticket lifecycle state machine and maintain tamper-evident
+  audit trails.
+
+--------------------------------------------------------------------------------
+3. PROJECT DESCRIPTION & SUMMARY
+--------------------------------------------------------------------------------
+Campus FMS is an enterprise-grade facility operations, technician dispatch, and
+maintenance request management system designed for academic and enterprise campuses.
+
+Key Architectural Capabilities:
+- Four Isolated Consoles:
+    1. Student & Staff Portal (/portal) - Report issues, live SLA countdowns, 1-5 star ratings
+    2. Technician Console (/technician) - Task queue, repair logs, spare part costs in INR (₹)
+    3. Facility Admin (/admin) - Skill-based dispatch, emergency escalation, audit logs
+    4. Executive Management (/management) - Read-only BI dashboard, SLA % and cost analytics
+- Full-Stack Technology:
+    Backend  : Python 3.10+, Flask 3.0 REST API
+    Frontend : Modern Vanilla HTML5, CSS3, ES6+ JavaScript, Chart.js
+    Database : MySQL 8.4 (Hosted on Railway)
+    Hosting  : Vercel Serverless Edge Runtime
+- Defense-in-Depth Security:
+    Server-side RBAC (@role_required), cryptographic CSRF protection, 15-minute
+    brute-force account lockout, and object-level IDOR prevention.
+
+--------------------------------------------------------------------------------
+4. PRE-CONFIGURED DEMO ACCOUNTS FOR EVALUATION
+--------------------------------------------------------------------------------
+Role                     Email Address                 Password     Console Route
+--------------------------------------------------------------------------------
+Student / Staff        : alex.student@campus.edu       student123   /portal
+Facility Admin         : marcus.admin@campus.edu       admin123     /admin
+Technician (Electrical): carlos.electrician@campus.edu tech123      /technician
+Technician (Plumbing)  : elena.plumber@campus.edu      tech123      /technician
+Executive Management   : reynolds.mgmt@campus.edu      mgmt123      /management
+================================================================================
