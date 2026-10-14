@@ -59,12 +59,17 @@ def execute_mysql_script(cursor, sql_content):
         if stmt:
             cursor.execute(stmt)
 
+import re
+
+DB_SSL = os.getenv("DB_SSL", "false").lower() in ("true", "1", "yes")
+
 def initialize_database():
     """
     Initializes and reseeds the MySQL database campus_fms.
-    Works seamlessly with least-privilege user campus_app:
+    Works seamlessly with both local MySQL and Cloud databases (Aiven, TiDB, Railway):
+    - Automatically executes schema.sql if tables are missing
     - Cleans all existing data with FOREIGN_KEY_CHECKS disabled
-    - Reseeds fresh Review 1 normalized test data from seed.sql
+    - Reseeds fresh normalized test data from seed.sql
     - Reseeds and verifies all demo accounts and passwords
     - Prints demo credentials table in terminal
     """
@@ -74,21 +79,47 @@ def initialize_database():
     print(f"[*] Target MySQL Server: {DB_HOST}:{DB_PORT}")
     print(f"[*] User: {DB_USER}")
     print(f"[*] Database: {DB_NAME}")
+    print(f"[*] SSL Enabled: {DB_SSL}")
 
-    conn = pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        autocommit=False,
-        connect_timeout=5
-    )
+    connect_kwargs = {
+        "host": DB_HOST,
+        "port": DB_PORT,
+        "user": DB_USER,
+        "password": DB_PASSWORD,
+        "database": DB_NAME,
+        "autocommit": False,
+        "connect_timeout": 10
+    }
+    if DB_SSL:
+        connect_kwargs["ssl"] = {}
+
+    conn = pymysql.connect(**connect_kwargs)
 
     try:
         with conn.cursor() as cur:
-            # 1. Clean existing records in campus_fms safely
-            print("[*] Resetting existing records in campus_fms...")
+            # 1. Check if schema already exists; if not, apply schema.sql first
+            cur.execute("SHOW TABLES;")
+            raw_tables = cur.fetchall()
+            existing_tables = [
+                (t[f"Tables_in_{DB_NAME}"].lower() if isinstance(t, dict) else t[0].lower())
+                for t in raw_tables
+            ]
+            
+            if "users" not in existing_tables:
+                print("[*] Tables not found. Deploying 15-table 3NF schema and triggers from schema.sql...")
+                with open(SCHEMA_SQL_PATH, "r", encoding="utf-8") as f:
+                    schema_content = f.read()
+                # Filter out DROP/CREATE DATABASE and USE statements for cloud portability
+                filtered_lines = [
+                    line for line in schema_content.splitlines()
+                    if not re.match(r"^\s*(DROP\s+DATABASE|CREATE\s+DATABASE|USE\s+)", line, re.IGNORECASE)
+                ]
+                execute_mysql_script(cur, "\n".join(filtered_lines))
+                conn.commit()
+                print("[OK] Schema & triggers successfully created.")
+
+            # 2. Clean existing records safely
+            print("[*] Resetting existing records...")
             cur.execute("SET FOREIGN_KEY_CHECKS = 0;")
             tables_to_clear = [
                 "Materials", "WorkLogs", "Assignments", "Feedback", "StatusHistory",
@@ -96,8 +127,8 @@ def initialize_database():
                 "Categories", "Buildings", "Users", "LoginAttempts", "AuditLog"
             ]
             for tbl in tables_to_clear:
-                cur.execute(f"DELETE FROM `{tbl}`;")
                 try:
+                    cur.execute(f"DELETE FROM `{tbl}`;")
                     cur.execute(f"ALTER TABLE `{tbl}` AUTO_INCREMENT = 1;")
                 except Exception:
                     pass
@@ -105,7 +136,7 @@ def initialize_database():
             conn.commit()
             print("[OK] All tables cleaned.")
 
-            # 2. Execute seed.sql
+            # 3. Execute seed.sql
             print("[*] Applying seed.sql...")
             with open(SEED_SQL_PATH, "r", encoding="utf-8") as f:
                 seed_content = f.read()

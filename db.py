@@ -12,52 +12,48 @@ DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_NAME = os.getenv("DB_NAME", "campus_fms")
 
+DB_SSL = os.getenv("DB_SSL", "false").lower() in ("true", "1", "yes")
+
+def _get_connect_kwargs(with_db=True):
+    kwargs = {
+        "host": DB_HOST,
+        "port": DB_PORT,
+        "user": DB_USER,
+        "password": DB_PASSWORD,
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": False,
+        "connect_timeout": 10
+    }
+    if with_db:
+        kwargs["database"] = DB_NAME
+    if DB_SSL:
+        kwargs["ssl"] = {}
+    return kwargs
+
 def get_db_connection():
     """
     Returns an active MySQL database connection.
-    Connects strictly to MySQL on localhost using .env credentials.
-    Dual-engine fallback has been removed as per Review 1 specifications.
+    Connects to MySQL using .env credentials with optional SSL support for cloud databases.
     """
     try:
-        conn = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
-            cursorclass=pymysql.cursors.DictCursor,
-            autocommit=False,
-            connect_timeout=3
-        )
+        conn = pymysql.connect(**_get_connect_kwargs(with_db=True))
         return conn
     except pymysql.err.OperationalError as e:
-        # If database campus_fms does not exist yet, create it
+        # If database does not exist yet (local dev convenience)
         if e.args[0] == 1049:  # Unknown database
-            admin_conn = pymysql.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=True,
-                connect_timeout=3
-            )
-            with admin_conn.cursor() as cur:
-                cur.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
-            admin_conn.close()
+            try:
+                admin_kwargs = _get_connect_kwargs(with_db=False)
+                admin_kwargs["autocommit"] = True
+                admin_conn = pymysql.connect(**admin_kwargs)
+                with admin_conn.cursor() as cur:
+                    cur.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+                admin_conn.close()
 
-            # Retry connecting to the created database
-            conn = pymysql.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                database=DB_NAME,
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=False,
-                connect_timeout=3
-            )
-            return conn
+                # Retry connecting to the created database
+                conn = pymysql.connect(**_get_connect_kwargs(with_db=True))
+                return conn
+            except Exception:
+                raise e
         raise
 
 def query_db(query, args=(), fetchone=False, commit=False):
