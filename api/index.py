@@ -1,5 +1,6 @@
 import sys
 import os
+from urllib.parse import parse_qs, urlencode
 
 # Add parent directory to sys.path so app and db modules can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -7,23 +8,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
 class VercelPathMiddleware:
-    """
-    Middleware to restore the true requested URL path for Flask on Vercel.
-    Vercel rewrites forward requests to /api/index, so we restore PATH_INFO
-    from HTTP_X_FORWARDED_URI or HTTP_X_MATCHED_PATH.
-    """
+    """Restores the true requested path when Vercel rewrites forward with __url query parameter."""
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        original_uri = environ.get("HTTP_X_FORWARDED_URI") or environ.get("HTTP_X_MATCHED_PATH")
-        if original_uri:
-            path_only = original_uri.split("?")[0]
-            if path_only:
-                environ["PATH_INFO"] = path_only
-        elif environ.get("PATH_INFO", "").startswith("/api/index"):
+        qs = environ.get("QUERY_STRING", "")
+        if "__url" in qs:
+            params = parse_qs(qs, keep_blank_values=True)
+            if "__url" in params:
+                req_path = params.pop("__url")[0]
+                if not req_path.startswith("/"):
+                    req_path = "/" + req_path
+                environ["PATH_INFO"] = req_path
+                environ["QUERY_STRING"] = urlencode(params, doseq=True)
+        elif environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
             environ["PATH_INFO"] = "/"
         return self.wsgi_app(environ, start_response)
 
-# Apply middleware to Flask WSGI app
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)

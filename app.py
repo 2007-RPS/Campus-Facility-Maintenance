@@ -15,19 +15,24 @@ load_dotenv()
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "campus_fms_super_secret_key_2026_development")
 
+from urllib.parse import parse_qs, urlencode
+
 class VercelPathFixMiddleware:
     """Restores the true requested path when Vercel rewrites forward to an entrypoint."""
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        original_uri = environ.get("HTTP_X_FORWARDED_URI") or environ.get("HTTP_X_MATCHED_PATH")
-        path_info = environ.get("PATH_INFO", "")
-        if original_uri:
-            path_only = original_uri.split("?")[0]
-            if path_only and path_only not in ("/api/index", "/api/index.py"):
-                environ["PATH_INFO"] = path_only
-        elif path_info in ("/api/index", "/api/index.py", "/app.py"):
+        qs = environ.get("QUERY_STRING", "")
+        if "__url" in qs:
+            params = parse_qs(qs, keep_blank_values=True)
+            if "__url" in params:
+                req_path = params.pop("__url")[0]
+                if not req_path.startswith("/"):
+                    req_path = "/" + req_path
+                environ["PATH_INFO"] = req_path
+                environ["QUERY_STRING"] = urlencode(params, doseq=True)
+        elif environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
             environ["PATH_INFO"] = "/"
         return self.wsgi_app(environ, start_response)
 
@@ -304,6 +309,13 @@ def index():
     """Landing gateway directing users to their respective consoles."""
     user = get_current_user_obj()
     return render_template("landing.html", user=user)
+
+@app.route("/api/debug-env")
+def debug_env():
+    return jsonify({
+        k: str(v) for k, v in request.environ.items() 
+        if not k.startswith("werkzeug.") and "KEY" not in k and "PASS" not in k and "SECRET" not in k
+    })
 
 @app.route("/login")
 def login_gateway():
